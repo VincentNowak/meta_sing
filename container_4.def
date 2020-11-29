@@ -1,0 +1,150 @@
+Bootstrap: library
+From: ubuntu:sha256.80c52afadf3e7c3f9573de4fe79b7dca57fb3290df6c8dc46a75b02768a81146
+
+%help
+    echo "This is a singularity image containing dRep v2.6.1 and GTDB-Tk v1.1.1"
+    "To run the standard workflow, please enter your arguments in the following order:
+        threads memory bin_directory output_folder gtdbtk_database_directory"
+    "First, the workflow will run dRep with standard settings on all bins ending in .fasta in the bin_directory"
+    "Secondly, the workflow will run the GTDB-tk classify_wf with standard settings to taxonomically identify the dereplicated bins. IMPORTANT to note is that due to the size of the GTDB-tk database, this cannot be included in the container and the path to this separately downloaded database needs to be bound to the specified directory inside the container e.g. using the command commented out in the runscript or using the --bind flag" 
+    "Lastly, the workflow will run the blobplot.py script to summarise and visualise the dereplicated bins by plotting %GC of all contigs in the bins against their respective coverage with size of the datapoints indicating contig size and colour of the datapoints indicating their taxonomy. This was derived from Albertsen, M., Hugenholtz, P., Skarshewski, A., Nielsen, K. L., Tyson, G. W., & Nielsen, P. H. (2013). Genome sequences of rare, uncultured bacteria obtained by differential coverage binning of multiple metagenomes. Nature biotechnology, 31(6), 533." 
+
+
+%files
+    /home/vincent/Documents/blobplot.py /blobplot.py
+
+
+%post
+    # Installing prerequisites not explicitly specified by dRep install instructions
+    sed -i 's/$/ universe/' /etc/apt/sources.list
+    apt-get update
+    apt-get install -y apt-utils dialog locales debconf libterm-readline-gnu-perl csh zlib1g-dev libzip-dev libbz2-dev liblzma-dev unzip autoconf git wget gsl-bin libgsl-dbg libgsl-dev libgsl23 python3-setuptools python3-pip hmmer mash fasttree
+    locale-gen en_NZ.UTF-8
+    export LC_ALL=en_NZ.UTF-8
+    # Installing Prodigal    
+    wget https://github.com/hyattpd/Prodigal/archive/v2.6.3.tar.gz -O /v2.6.3.tar.gz 
+    cd /
+    tar xzf v2.6.3.tar.gz
+    cd /Prodigal-2.6.3/
+    make
+    cd /
+    export PATH=$PATH:/Prodigal-2.6.3/ 
+    # Installing checkM
+    pip3 install numpy
+    pip3 install cython
+    pip3 install pysam
+    pip3 install checkm-genome
+    wget https://data.ace.uq.edu.au/public/CheckM_databases/checkm_data_2015_01_16.tar.gz -O /checkm_data_2015_01_16.tar.gz
+    cd /
+    mkdir /checkm_data
+    tar -C /checkm_data -xzf checkm_data_2015_01_16.tar.gz
+    checkm data setRoot /checkm_data
+    # Installing PPLacer
+    wget https://github.com/matsen/pplacer/releases/download/v1.1.alpha19/pplacer-linux-v1.1.alpha19.zip -O /pplacer-linux-v1.1.alpha19.zip
+    unzip pplacer-linux-v1.1.alpha19.zip
+    export PATH=/pplacer-Linux-v1.1.alpha19:$PATH
+    # Installing ANICalculator
+    wget https://ani.jgi.doe.gov/download_files/ANIcalculator_v1.tgz -O /ANIcalculator_v1.tgz
+    cd /
+    tar xzf ANIcalculator_v1.tgz
+    export PATH=/ANIcalculator_v1:$PATH
+    chmod -R 555 /ANIcalculator_v1
+    # Installing MUMmer
+    wget https://sourceforge.net/projects/mummer/files/latest/download -O /download
+    tar -xzf download
+    cd MUMmer3.23/
+    make install
+    cd /
+    export PATH=/MUMmer3.23:$PATH
+    # Installing fastANI
+    git clone https://github.com/ParBLiSS/FastANI /FastANI
+    cd /FastANI
+    ./bootstrap.sh
+    ./configure
+    make
+    cd /
+    export PATH=/FastANI:$PATH
+    # Installing dRep
+    pip3 install drep
+    # Download GTDB-tk databases (this is commented out since GTDBTK database is very large and will be downloaded separately)
+    #mkdir /GTDBTK
+    #wget https://data.ace.uq.edu.au/public/gtdb/data/releases/release89/89.0/gtdbtk_r89_data.tar.gz -O /nfs/scratch/nowakvi/GTDBTK/gtdbtk_r89_data.tar.gz
+    #cd /GTDBTK
+    #tar xvzf gtdbtk_r89_data.tar.gz
+    #cd /
+    # Installing GTDB-tk (The path inside the container later needs to be mounted to the external location of the database. See runscript)
+    pip3 install scipy gtdbtk
+    mkdir /gtdbtk_db_dir
+    export GTDBTK_DATA_PATH=/gtdbtk_db_dir
+    # Installing python libraries needed for blobplot.py
+    pip3 install numpy pandas seaborn biopython matplotlib
+
+
+%environment
+    export LC_ALL=en_NZ.UTF-8
+    export PATH=/Prodigal-2.6.3/:$PATH 
+    export PATH=/pplacer-Linux-v1.1.alpha19:$PATH    
+    export PATH=/ANIcalculator_v1:$PATH
+    export PATH=/MUMmer3.23:$PATH
+    export PATH=/FastANI:$PATH
+    export GTDBTK_DATA_PATH=/gtdbtk_db_dir
+
+
+%runscript
+    #!/bin/bash
+    if [ ! -d "$5" ]; then
+        echo 'Argument $5 is missing or does not designate a directory' >&2
+        exit 1
+    fi
+    if [ -e "$4" ]; then
+        echo 'Argument $4 is pointing to a directory that already exist!\nEXITING' >&2
+        exit 1
+    fi
+    if [ ! -e "$4" ]; then
+        mkdir $4
+    fi
+    if [ ! -d "$3" ]; then
+        echo 'Argument $3 is missing or does not designate a directory' >&2
+        exit 1
+    fi
+    if [[ ! $2 =~ ^[+-]?[0-9]+$ ]]; then
+        echo 'Argument $2 is missing or not an integer' >&2
+        exit 1
+    fi
+    if [[ ! $1 =~ ^[+-]?[0-9]+$ ]]; then
+        echo 'Argument $1 is missing or not an integer' >&2
+        exit 1
+    fi
+
+    dRep dereplicate $4/dRep_output -p $1 -g $3/*.fasta
+
+    # The command below needs to be executed before running this container, where $5 is the path to the database_directory
+    # export SINGULARITY_BIND="$5:/gtdbtk_db_dir"
+    gtdbtk classify_wf --cpus $1 --extension "fasta" --genome_dir $4/dRep_output/dereplicated_genomes/ --out_dir $4/gtdbtk_output
+
+    # check if archaeal file was actually produced
+    if [ -e $4/gtdbtk_output/gtdbtk.ar122.summary.tsv ]; then
+        python3 /blobplot.py -b $4/dRep_output/dereplicated_genomes/ -o $4 -t $4/gtdbtk_output/gtdbtk.bac120.summary.tsv -a $4/gtdbtk_output/gtdbtk.ar122.summary.tsv 
+    fi
+    if [ ! -e $4/gtdbtk_output/gtdbtk.ar122.summary.tsv ]; then
+        python3 /blobplot.py -b $4/dRep_output/dereplicated_genomes/ -o $4 -t $4/gtdbtk_output/gtdbtk.bac120.summary.tsv
+    fi
+
+
+%test
+    export LC_ALL=en_NZ.UTF-8
+    export PATH=/Prodigal-2.6.3/:$PATH
+    export PATH=/pplacer-Linux-v1.1.alpha19:$PATH
+    export PATH=/ANIcalculator_v1:$PATH
+    export PATH=/MUMmer3.23:$PATH
+    export PATH=/FastANI:$PATH
+    echo "Running dRep:~> dRep bonus testDir --check_dependencies"
+    dRep bonus testDir --check_dependencies
+    echo "Testing checkM"
+    checkm test ~/checkm_test_results
+    export GTDBTK_DATA_PATH=/gtdbtk_db_dir
+    gtdbtk test --out_dir ~/GTDB_tk_test
+
+%labels
+    Maintainer "Vincent Nowak <vincent.nowak@vuw.ac.nz>"
+

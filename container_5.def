@@ -1,0 +1,89 @@
+Bootstrap: library
+From: ubuntu:18.04
+
+%help
+    "This is a singularity image containing antiSMASH v.5.1.2 (bioconda install)" 
+    "To run the standard workflow, please enter your arguments in the following order (Note that gtdbtk.ar122.summary is optional):
+        threads assembly_file output_folder bin_directory gtdbtk.bac120.summary gtdbtk.ar122.summary"
+    "First the workflow will run antiSMASH on the contigs provided with a length-filter of 5000 bp, then it will run the BGC_to_bin_mapper.py script to summarise the results as a simple bar graph and relate the identified BGCs back to bins/MAGs and their taxonomy producing a tsv file and a bar graph."
+
+%files
+    /home/vincent/Documents/BGC_to_bin_mapper.py /BGC_to_bin_mapper.py
+
+%post
+    #!/bin/bash
+# installing prerequisites not specified by antiSMASH install instructions
+    sed -i 's/$/ universe/' /etc/apt/sources.list
+    apt-get update && apt-get -y install wget build-essential 
+    apt-get install -y apt-utils dialog locales vim git python3-pip python3-setuptools gnupg openjdk-11-jre cd-hit zlib1g zlib1g-dev
+    locale-gen en_NZ.UTF-8
+    export LC_ALL=en_NZ.UTF-8
+    pip3 install pandas biopython matplotlib seaborn
+    cd /
+    wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O /Miniconda2-latest-Linux-x86_64.sh
+    bash Miniconda2-latest-Linux-x86_64.sh -bfp /usr/local
+    . /usr/local/etc/profile.d/conda.sh
+    conda update -n base -c defaults conda
+    conda config --add channels defaults
+    conda config --add channels bioconda
+    conda config --add channels conda-forge
+    conda create -n antismash antismash
+    conda activate antismash
+    download-antismash-databases
+    conda deactivate
+
+%environment
+    export LC_ALL=en_NZ.UTF-8
+#    export PATH=/antismash-5.1.1:$PATH
+#    export PATH=/antismash-5.1.1/antismash:$PATH
+#    export PATH=/sina-1.6.1-linux:$PATH
+    export PATH=/barrnap/bin:$PATH
+
+%runscript
+    #!/bin/bash
+    if [ -e "$3" ]; then
+        echo 'Argument $3 is pointing to a directory that already exist!\nEXITING' >&2
+        exit 1
+    fi
+    if [ ! -e "$3" ]; then
+        mkdir $3
+    fi
+    if [ ! -f "$2" ]; then
+        echo 'Argument $2 is missing or does not designate a file' >&2
+        exit 1
+    fi
+    if [[ ! $1 =~ ^[+-]?[0-9]+$ ]]; then
+        echo 'Argument $1 is missing or not an integer' >&2
+        exit 1
+    fi
+    if [ ! -d "$4" ]; then
+        echo 'Argument $4 is missing or does not designate a directory' >&2
+        exit 1
+    fi
+    if [ ! -f "$5" ]; then
+        echo 'Argument $5 is missing or does not designate a file' >&2
+        exit 1
+    fi
+#    . /as5env/bin/activate
+    source activate antismash
+    antismash --cpus $1 --genefinding-tool prodigal --fullhmmer --cb-general --cb-subclusters --cb-knownclusters --minlength 5000 --output-dir $3 $2
+    conda deactivate
+    anti_res=$(echo "$2" | awk -F "/" '{print $NF}' | awk -F "." '{print $1".gbk"}')
+    mkdir $3/BGC_to_bin_mapper
+    if [ -f "$6" ]; then
+	python3 /BGC_to_bin_mapper.py -r $3/$anti_res -b $4 -t $5 -a $6 -o $3/BGC_to_bin_mapper
+    fi
+    if [ ! -f "$6" ]; then
+        python3 /BGC_to_bin_mapper.py -r $3/$anti_res -b $4 -t $5 -o $3/BGC_to_bin_mapper
+    fi
+
+%test
+    echo "Running antismash --check-prereqs"
+    export LC_ALL=en_NZ.UTF-8
+    source activate antismash
+    antismash --check-prereqs
+    conda deactivate
+    python3 /BGC_to_bin_mapper.py --help
+
+%labels
+    Maintainer "Vincent Nowak <vincent.nowak@vuw.ac.nz>"

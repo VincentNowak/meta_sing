@@ -1,0 +1,79 @@
+Bootstrap: library
+From: ubuntu:sha256.80c52afadf3e7c3f9573de4fe79b7dca57fb3290df6c8dc46a75b02768a81146
+
+%help
+    "This is a singularity image containing MetaWRAP v=1.2.1 without any of the associated databases"
+    "In order to run the standard workflow please enter your arguments in the following order:
+	threads memory assembly_file trimmed_forwards_reads trimmed_reverse_reads output_dir"
+    "NOTE that the trimmed_forwards_reads and trimmed_reverse_reads have to end in 1.fastq and 2.fastq respectively"
+
+%post
+    sed -i 's/$/ universe/' /etc/apt/sources.list
+    apt-get update
+    apt-get install -y apt-utils debconf dialog locales vim wget default-jdk python python-setuptools python-pip libwww-perl r-base
+    locale-gen en_NZ.UTF-8
+    export LC_ALL=en_NZ.UTF-8
+    wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O /Miniconda2-latest-Linux-x86_64.sh 
+#    chmod 777 /Miniconda2-latest-Linux-x86_64.sh
+    bash Miniconda2-latest-Linux-x86_64.sh -bfp /usr/local
+# Bad practice to change permissions of folder as it leaves small chance of container modification and altered runtime behaviour    
+#    chmod 777 -R /usr/local
+    . /usr/local/etc/profile.d/conda.sh
+#    conda activate base
+    conda create -y -n metawrap-env python=2.7
+    conda config --add channels defaults
+    conda config --add channels conda-forge
+    conda config --add channels bioconda
+    conda config --add channels ursky
+    conda install -y -c ursky metawrap-mg
+    conda activate metawrap-env
+
+%environment
+    export LC_ALL=en_NZ.UTF-8
+    . /usr/local/etc/profile.d/conda.sh
+#    conda activate base
+    conda activate metawrap-env
+
+%runscript
+    #!/bin/bash
+    if [ -e "$6" ]; then
+        echo 'Argument $6 is pointing to a directory that already exist!\nEXITING' >&2
+        exit 1
+    fi
+    if [ ! -e "$6" ]; then
+        mkdir $6
+    fi
+    if [ ! -f "$5" ]; then
+        echo 'Argument $5 is missing or does not designate a file' >&2
+        exit 1
+    fi
+    if [ ! -f "$4" ]; then
+        echo 'Argument $4 is missing or does not designate a file' >&2
+        exit 1
+    fi
+    if [ ! -f "$3" ]; then
+        echo 'Argument $3 is missing or does not designate a file' >&2
+        exit 1
+    fi
+    if [[ ! $2 =~ ^[+-]?[0-9]+$ ]]; then
+        echo 'Argument $2 is missing or not an integer' >&2
+        exit 1
+    fi
+    if [[ ! $1 =~ ^[+-]?[0-9]+$ ]]; then
+        echo 'Argument $1 is missing or not an integer' >&2
+        exit 1
+    fi
+    metaWRAP binning -t $1 -m $2 --maxbin2 --metabat2 -a $3 -o $6 $4 $5
+
+%test
+    export LC_ALL=en_NZ.UTF-8
+    . /usr/local/etc/profile.d/conda.sh
+#    conda activate base
+    echo "running metaWRAP -h"
+    conda activate metawrap-env
+    metaWRAP -h
+    conda deactivate
+
+%labels
+    Maintainer "Vincent Nowak <vincent.nowak@vuw.ac.nz>
+

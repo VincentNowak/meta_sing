@@ -1,0 +1,95 @@
+Bootstrap: library
+From: ubuntu:18.04
+
+%help
+    "This is a singularity container containing Trimmomatic v.0.36 SPAdes v.3.12.0"
+    "To run the standard workflow, please enter your arguments in the following order:
+        threads memory forward_reads reverse_reads output folder"
+    "First, the workflow will run adap_ID.sh to identify adapter sequences and append these to the Trimmomatic PE adapter file TruSeq3-PE-2.fa"
+    "Secondly the worklfow will then run TrimmomaticPE with the following parameters:
+        PE ILLUMINACLIP:$5/adpater_file.fasta:2:30:10:4:4:/true TRAILING:9 SLIDINGWINDOW:4:15 MINLEN:36"
+    "Lastly, the workflow will assemble the trimmed reads using metaSPAdes with the standard kmers of 21,33,55,77,99,127"
+
+
+%files
+    /home/vincent/Documents/scripts/adap_ID.sh /adap_ID.sh
+    /home/vincent/Trimmomatic-0.36/adapters/TruSeq3-PE-2.fa /TruSeq3-PE-2.fa
+
+
+%post
+    sed -i 's/$/ universe/' /etc/apt/sources.list
+    apt-get update
+    apt-get install -y apt-utils dialog locales vim wget python python-setuptools python-pip trimmomatic openjdk-11-jdk openjdk-11-jre
+    locale-gen en_NZ.UTF-8
+    export LC_ALL=en_NZ.UTF-8
+    wget http://cab.spbu.ru/files/release3.14.0/SPAdes-3.14.0-Linux.tar.gz -O /SPAdes-3.14.0-Linux.tar.gz
+    tar -xzf /SPAdes-3.14.0-Linux.tar.gz
+    export PATH=/SPAdes-3.14.0-Linux/bin/:$PATH
+    export PATH=/:$PATH
+# Installing BBTools
+    cd /
+    wget https://sourceforge.net/projects/bbmap/files/BBMap_38.82.tar.gz -O /BBMap_38.82.tar.gz
+    tar -xvzf BBMap_38.82.tar.gz
+    export PATH=/bbmap:$PATH
+
+
+%environment
+    export LC_ALL=en_NZ.UTF-8
+    export PATH=/SPAdes-3.14.0-Linux/bin/:$PATH
+    export PATH=/:$PATH
+    export PATH=/bbmap:$PATH
+
+
+%runscript
+    #!/bin/bash 
+    if [ -e "$5" ]; then
+        echo 'Argument $5 is pointing to a directory that already exist!\nEXITING' >&2
+        exit 1
+    fi
+    
+    if [ ! -e "$5" ]; then
+        mkdir $5
+    fi
+    
+    if [ ! -f "$3" ]; then
+        echo 'Argument $4 missing or does not designate a file' >&2
+        exit 1
+    fi
+    
+    if [ ! -f "$3" ]; then
+        echo 'Argument $3 missing or does not designate a file' >&2
+        exit 1
+    fi
+    
+    if [[ ! $2 =~ ^[+-]?[0-9]+$ ]]; then
+        echo 'Argument $2 is missing or not an integer'
+    fi
+    
+    if [[ ! $1 =~ ^[+-]?[0-9]+$ ]]; then
+        echo 'Argument $1 is missing or not an integer'
+        exit 1
+    fi
+ 
+    bash adap_ID.sh $3 | grep "^>" -A 1 --no-group-separator > $5/adapter_file.fasta
+
+    bash adap_ID.sh $4 | grep "^>" -A 1 --no-group-separator >> $5/adapter_file.fasta
+
+    cat /TruSeq3-PE-2.fa >> $5/adapter_file.fasta
+
+    TrimmomaticPE -threads $1 -trimlog $5/trimmomatic.log $3 $4 $5/forward_trimmed_1P.fq.gz $5/forward_trimmed_1U.fq.gz $5/reverse_trimmed_2P.fq.gz $5/reverse_trimmed_2U.fq.gz ILLUMINACLIP:$5/adapter_file.fasta:2:30:10:4:4:/true TRAILING:9 SLIDINGWINDOW:4:15 MINLEN:36
+
+    spades.py --threads $1 --memory $2 --meta -k 21,33,55,77,99,127 --pe1-1 $5/forward_trimmed_1P.fq.gz --pe1-2 $5/reverse_trimmed_2P.fq.gz -o $5/assembly
+
+
+%test
+    echo "running spades.py --test"
+    export LC_ALL=en_NZ.UTF-8
+    export PATH=/SPAdes-3.14.0-Linux/bin/:$PATH
+    spades.py --test
+    echo "running stats.sh to test BBTools"
+    export PATH=/bbmap:$PATH
+    stats.sh in=/bbmap/resources/phix174_ill.ref.fa.gz
+
+
+%labels
+    Maintainer "Vincent Nowak <vincent.nowak@vuw.ac.nz>
