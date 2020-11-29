@@ -1,4 +1,4 @@
-# Vincents metagenomic singularity workflow (meta_sing)
+# Metagenomic singularity workflow (meta_sing)
 Initial relase: 15/05/2020
 This is a WIP
 
