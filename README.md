@@ -49,6 +49,10 @@ Steps in the workflow:
 4. container_4 dereplicates (and qaulity-filters) the three bin/MAG sets using dRep v.2.6.2 (Olm et al. 2017) to result in one high-quality set of MAGs, then identifies the taxonomy of these high-quality MAGs using GTDB-tk v.1.1.1 (Chaumeil et al. 2020) and then summarises results using the blobplot.py script producing a tsv file and two blobplots (inspired by Albertsen et al. 2013)
 5. container_5 runs antiSMASH v.5.1.2 (Blin et al. 2019) on the assembly and then associates the BGCs with the bin_taxonomy producing a few summary bar graphs most notably with the number of BGCs found per taxonomy at the class level and a .csv file containing the information from associating BGCs with MAGs. Note that this container includes the meme-suite, so by using it you agree to the MEME license (http://meme-suite.org/doc/copyright.html)
 
+## Suggestions and/or corrections
+- Found in all .def files: instead of adding universe to all sources with ```sed -i 's/$/ universe/' /etc/apt/sources.list```, only uncomment universe repositories with ```sed -i 's/^#(.*) universe$/$1 universe/' /etc/apt/sources.list``` - Guillermo Rodriguez Piccoli
+
+
 References:
 1. Albertsen, M., Hugenholtz, P., Skarshewski, A., Nielsen, K. L., Tyson, G. W., & Nielsen, P. H. (2013). Genome sequences of rare, uncultured bacteria obtained by differential coverage binning of multiple metagenomes. Nature biotechnology,31(6), 533-538.
 2. Blin, K., Shaw, S., Steinke, K., Villebro, R., Ziemert, N., Lee, S. Y., ... & Weber, T. (2019). antiSMASH 5.0: updates to the secondary metabolite genome mining pipeline. Nucleic acids research, 47(W1), W81-W87
