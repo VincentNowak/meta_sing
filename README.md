@@ -53,7 +53,7 @@ Steps in the workflow:
 - Found in all .def files: instead of adding universe to all sources with ```sed -i 's/$/ universe/' /etc/apt/sources.list```, only uncomment universe repositories with ```sed -i 's/^#(.*) universe$/$1 universe/' /etc/apt/sources.list``` - Guillermo Rodriguez Piccoli
 
 
-References:
+## References
 1. Albertsen, M., Hugenholtz, P., Skarshewski, A., Nielsen, K. L., Tyson, G. W., & Nielsen, P. H. (2013). Genome sequences of rare, uncultured bacteria obtained by differential coverage binning of multiple metagenomes. Nature biotechnology,31(6), 533-538.
 2. Blin, K., Shaw, S., Steinke, K., Villebro, R., Ziemert, N., Lee, S. Y., ... & Weber, T. (2019). antiSMASH 5.0: updates to the secondary metabolite genome mining pipeline. Nucleic acids research, 47(W1), W81-W87
 3. Bolger, A. M., Lohse, M., & Usadel, B. (2014). Trimmomatic: a flexible trimmer for Illumina sequence data. Bioinformatics, 30(15), 2114-2120.
