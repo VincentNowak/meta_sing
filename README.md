@@ -9,7 +9,7 @@ Definitely needed:
 - git
 
 Desirable:
-- Ubuntu 18.04 LTS
+- Ubuntu 18.04 LTS or higher
 
 ## General Notes
 - This workflow is very much designed for reproducibility, transferability and ease-of-access rather than computational efficiency. Suggestions are as always welcome but may not be included in the git, as it is intended to allow reproducibility of work yet to be published.
@@ -18,9 +18,14 @@ Desirable:
 - Descriptions of each container are accessible by running singularity run-help path/to/container
 - Descriptions of each python script are accessible by running python3 python_script.py --help
 - meta_sing.sh does not contain help-text but checks order and type of parameters
-- Ultimately .sif files will hopefully be uploaded to SingularityHub or similar
 
 ## Workflow
+All containers (except container_5.sif at this stage) are availabe on the sylabs.io library and can be downloaded from the website or using singularity pull as shown below.
+```
+singularity pull library://vincentnowak/meta_sing/container_1.sif
+
+```
+
 Before running the workflow, two databases need to be downloaded, one for autometa and one for GTDB-tk. These are quite large and would be impractical to include in the .sif files. It should be noted that the SILVA database and antiSMASH database are included in container_5 since these are smaller. In order to download the databases run the following:
 ```
 # Firstly, the autometa binaries from the git need to be cloned and fed into meta_sing as a parameter, which will bind them into the singularity container. This container was converted from a docker container rather than being built using the manual install instructions of autometa as a .def file (tried this but not successfull). When trying to run the run_autometa.py script within autometa_latest_2.sif, hmmpress throws an error which I (for the benefit of time) did not resolve. 
