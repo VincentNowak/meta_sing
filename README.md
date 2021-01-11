@@ -26,25 +26,23 @@ singularity pull library://vincentnowak/meta_sing/container_1.sif
 
 ```
 
-Before running the workflow, two databases need to be downloaded, one for autometa and one for GTDB-tk. These are quite large and would be impractical to include in the .sif files. It should be noted that the SILVA database and antiSMASH database are included in container_5 since these are smaller. In order to download the databases run the following:
+Before running the workflow, two databases need to be downloaded, one for autometa and one for GTDB-tk. These are quite large and would be impractical to include in the .sif files. It should be noted that the antiSMASH database is included in container_5 since it is much smaller. In order to download the databases run the following:
 ```
-# Firstly, the autometa binaries from the git need to be cloned and fed into meta_sing as a parameter, which will bind them into the singularity container. This container was converted from a docker container rather than being built using the manual install instructions of autometa as a .def file (tried this but not successfull). When trying to run the run_autometa.py script within autometa_latest_2.sif, hmmpress throws an error which I (for the benefit of time) did not resolve. 
-git clone https://github.com/KwanLab/Autometa.git
-
-# The command doesn't actually check if fake.fasta (arbitrary name/non-existent file) exist, so it should just download the database (~163 GB) and then crash
+# This command doesn't actually check if fake.fasta (arbitrary name/non-existent file) exist, so it should just download the database (~163 GB) and then crash
 singularity exec autometa_latest.sif path/to/autometa/pipeline/make_taxonomy_table.py -db path/to/autometa_db_directory -a fake.fasta
 
 # This will download the GTDB-tk database (~53 GB)
 wget https://data.ace.uq.edu.au/public/gtdb/data/releases/release89/89.0/gtdbtk_r89_data.tar.gz
 tar xvzf gtdbtk_r89_data.tar.gz
 ```
-Running ```bash meta_sing.sh``` will run all containers in sequence with checkpoints after container 1, 2 and 3. The required arguments (in order) are as below. A couple of things to note are:
+Running ```bash meta_sing.sh``` will run all containers in sequence with checkpoints after container 1, 2 and 3. The required arguments (in order) are as below. A few of things to note prior to running meta_sing are:
 1. The meta_sing.sh script currently only checks if the files and directories exist and that expected integers are actually integers but ultimately the algorithms themselves should report any errors related to file format, integrity, etc.
 2. Some of the "unnecessary" files produced by algorithms are autmatically deleted throughout the script (see rm commands for details) but ultimately users should be able to delete more themselves
+3. Autometa binaries are provided as part of this repo and need to be downloaded as they are bound into autometa_latest_2.sif when running meta_sing.sh with standard parameters. This is because the container (autometa_latest_2.sif) was converted from a docker container rather than being built using the manual install instructions of autometa as a .def file (tried this but not successfully). So, when trying to run the run_autometa.py script within autometa_latest_2.sif, hmmpress throws an error, which I (for the benefit of time) did not resolve.
 ```
-$1=container_directory $2=threads $3=memory $4=forwards_reads $5=reverse_reads $6=output_directory $7=autometa_db_directory $8=gtdbtk_directory
+$1=container_directory $2=threads $3=memory $4=forwards_reads $5=reverse_reads $6=output_directory $7=autometa_db_directory $8=gtdbtk_directory $9=autometa_binaries
 # Full command
-bash meta_sing.sh $1 $2 $3 $4 $5 $6 $7 $8
+bash meta_sing.sh $1 $2 $3 $4 $5 $6 $7 $8 $9
 ```
 
 Steps in the workflow:
