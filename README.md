@@ -3,8 +3,7 @@ Initial relase: 15/05/2020
 Final release: 15/12/2020
 
 ## Requirements
-Definitely needed:
-- singularity 3.4.2-1 or higher (3.5.0 or higher is recommended due to some security-related updates of singularity)
+- singularity 3.5.0 or higher
 - wget
 - git
 
@@ -20,6 +19,8 @@ Desirable:
 - meta_sing.sh does not contain help-text but checks order and type of parameters
 
 ## Workflow
+![image](https://github.com/VincentNowak/meta_sing/assets/40049948/035b4855-77a7-458b-a944-c4d4c761721e)
+
 All containers (except container_5.sif at this stage) are availabe on the sylabs.io library and can be downloaded from the website or using singularity pull as shown below.
 ```
 singularity pull library://vincentnowak/meta_sing/container_1.sif
